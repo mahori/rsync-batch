@@ -1,0 +1,74 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use feature qw( say );
+use Time::Local qw ( timelocal );
+
+if ( @ARGV != 2 ) {
+  say STDERR "Usage: $0 src_dir dest_dir";
+  exit -1;
+}
+
+my ( $src_dir, $dest_dir ) = @ARGV;
+say STDERR "src_dir  = $src_dir";
+say STDERR "dest_dir = $dest_dir";
+
+unless ( -d $src_dir ) {
+  say STDERR "$src_dir does not exist";
+  exit -1;
+}
+
+my %entries;
+
+opendir my $dh, $src_dir
+  or die "$!";
+
+while ( my $entry = readdir $dh ) {
+  say STDERR "entry = $entry";
+
+  if ( $entry =~ m/\A(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})(\d{2})\Z/ ) {
+    my $year   = $1 - 1900;
+    my $month  = $2 - 1;
+    my $day    = $3;
+    my $hour   = $4;
+    my $minute = $5;
+    my $second = $6;
+
+    my $time = timelocal( $second, $minute, $hour, $day, $month, $year );
+
+    $entries{$time} = $entry;
+  }
+}
+
+closedir $dh;
+
+my @sorted_keys = sort { $a <=> $b } keys %entries;
+
+print <<"_EOT_";
+#!/bin/sh
+
+mkdir -p '$dest_dir'
+_EOT_
+
+my $first_key   = shift @sorted_keys;
+my $first_entry = $entries{$first_key};
+say "mkdir '$dest_dir/$first_entry'";
+say "/usr/local/bin/rsync -avH --numeric-ids '$src_dir/$first_entry/' '$dest_dir/$first_entry/'";
+
+my $link_dest = $first_entry;
+foreach my $key ( @sorted_keys ) {
+  my $entry = $entries{$key};
+
+  say "mkdir '$dest_dir/$entry'";
+  say "/usr/local/bin/rsync -avH --delete --numeric-ids --link-dest='$dest_dir/$link_dest/' '$src_dir/$entry/' '$dest_dir/$entry/'";
+
+  $link_dest = $entry;
+}
+
+print <<"_EOT_";
+cd '$dest_dir'
+ln -s '$link_dest' Latest
+_EOT_
+
+exit 0;
