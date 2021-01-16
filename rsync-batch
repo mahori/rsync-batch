@@ -6,13 +6,13 @@ use feature qw( say );
 use Time::Local qw ( timelocal );
 
 if ( @ARGV != 2 ) {
-  say STDERR "Usage: $0 src_dir dest_dir";
+  say STDERR "Usage: $0 src_dir dst_dir";
   exit -1;
 }
 
-my ( $src_dir, $dest_dir ) = @ARGV;
-say STDERR "src_dir  = $src_dir";
-say STDERR "dest_dir = $dest_dir";
+my ( $src_dir, $dst_dir ) = @ARGV;
+say STDERR "src_dir = $src_dir";
+say STDERR "dst_dir = $dst_dir";
 
 unless ( -d $src_dir ) {
   say STDERR "$src_dir does not exist";
@@ -48,26 +48,26 @@ my @sorted_keys = sort { $a <=> $b } keys %entries;
 print <<"_EOT_";
 #!/bin/sh
 
-mkdir -p '$dest_dir'
+mkdir -p '$dst_dir'
 _EOT_
 
 my $first_key   = shift @sorted_keys;
 my $first_entry = $entries{$first_key};
-say "mkdir '$dest_dir/$first_entry'";
-say "/usr/local/bin/rsync -avH --numeric-ids '$src_dir/$first_entry/' '$dest_dir/$first_entry/'";
+say "mkdir '$dst_dir/$first_entry'";
+say "/usr/local/bin/rsync -avH --numeric-ids '$src_dir/$first_entry/' '$dst_dir/$first_entry/'";
 
 my $link_dest = $first_entry;
 foreach my $key ( @sorted_keys ) {
   my $entry = $entries{$key};
 
-  say "mkdir '$dest_dir/$entry'";
-  say "/usr/local/bin/rsync -avH --delete --numeric-ids --link-dest='$dest_dir/$link_dest/' '$src_dir/$entry/' '$dest_dir/$entry/'";
+  say "mkdir '$dst_dir/$entry'";
+  say "/usr/local/bin/rsync -avH --delete --numeric-ids --link-dest='$dst_dir/$link_dest/' '$src_dir/$entry/' '$dst_dir/$entry/'";
 
   $link_dest = $entry;
 }
 
 print <<"_EOT_";
-cd '$dest_dir'
+cd '$dst_dir'
 ln -s '$link_dest' Latest
 _EOT_
 
